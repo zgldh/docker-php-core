@@ -1,9 +1,33 @@
-FROM php:7.2-fpm                                                                                                                                                    
+FROM php:7.3-cli                                                                                                                                                
 
 RUN apt-get update && apt-get install -y \
-         libfreetype6-dev \
-         libjpeg62-turbo-dev \
-         libpng-dev \
-     && docker-php-ext-install -j$(nproc) iconv \
-     && docker-php-ext-configure gd --with-freetype-dir=/usr/include/ --with-jpeg-dir=/usr/include/ \
-     && docker-php-ext-install -j$(nproc) gd
+  libfreetype6-dev \
+  libjpeg62-turbo-dev \
+  libpng-dev \
+  libpq-dev \
+  libzip-dev zip unzip 
+
+RUN docker-php-ext-configure gd --with-freetype-dir=/usr/include/ --with-jpeg-dir=/usr/include/ \
+  && docker-php-ext-install -j$(nproc) gd \
+  # Install the zip extension
+  && docker-php-ext-install zip \
+  # BCMath PHP Extension
+  && docker-php-ext-install bcmath \
+  # Mbstring PHP Extension is already installed
+  # PDO PHP Extension
+  && docker-php-ext-install pdo pdo_pgsql pdo_mysql
+  # Tokenizer PHP Extension is already installed
+  # XML PHP Extension is already installed
+
+COPY --from=composer /usr/bin/composer /usr/bin/composer
+
+RUN composer config -g repo.packagist composer https://mirrors.aliyun.com/composer/
+
+# Clean up
+RUN apt-get clean && \
+  rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && \
+  rm /var/log/lastlog /var/log/faillog
+
+
+
+WORKDIR /etc/php
