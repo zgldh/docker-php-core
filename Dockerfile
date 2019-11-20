@@ -28,8 +28,4 @@ RUN apt-get clean && \
   rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && \
   rm /var/log/lastlog /var/log/faillog
 
-RUN groupadd -r docker && useradd -r -g docker docker
-
-USER docker
-
 WORKDIR /etc/php
