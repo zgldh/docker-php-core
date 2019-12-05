@@ -1,4 +1,7 @@
-FROM php:7.3-cli                                                                                                                                                
+FROM php:7.3-cli
+
+LABEL version="1.1" \
+  description="An image to run Laravel 6"
 
 RUN apt-get update && apt-get install -y \
   libfreetype6-dev \
@@ -16,8 +19,12 @@ RUN docker-php-ext-configure gd --with-freetype-dir=/usr/include/ --with-jpeg-di
   # Mbstring PHP Extension is already installed
   # PDO PHP Extension
   && docker-php-ext-install pdo pdo_pgsql pdo_mysql
-  # Tokenizer PHP Extension is already installed
-  # XML PHP Extension is already installed
+# Tokenizer PHP Extension is already installed
+# XML PHP Extension is already installed
+
+RUN pecl install -o -f redis; \
+  && rm -rf /tmp/pear \
+  && docker-php-ext-enable redis
 
 COPY --from=composer /usr/bin/composer /usr/bin/composer
 
