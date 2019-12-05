@@ -23,7 +23,7 @@ RUN docker-php-ext-configure gd --with-freetype-dir=/usr/include/ --with-jpeg-di
 # XML PHP Extension is already installed
 
 RUN pecl install -o -f redis; \
-  && rm -rf /tmp/pear \
+  rm -rf /tmp/pear \
   && docker-php-ext-enable redis
 
 COPY --from=composer /usr/bin/composer /usr/bin/composer
