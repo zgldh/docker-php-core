@@ -1,4 +1,4 @@
-FROM php:7.3-cli
+FROM php:7.3-fpm
 
 LABEL version="1.1" \
   description="An image to run Laravel 6"
