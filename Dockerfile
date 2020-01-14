@@ -30,9 +30,4 @@ COPY --from=composer /usr/bin/composer /usr/bin/composer
 
 RUN composer config -g repo.packagist composer https://mirrors.aliyun.com/composer/
 
-# Clean up
-RUN apt-get clean && \
-  rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && \
-  rm /var/log/lastlog /var/log/faillog
-
 WORKDIR /etc/php
