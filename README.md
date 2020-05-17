@@ -1,3 +1,3 @@
 # docker-php-core
 
-php7.3
+php7.4
