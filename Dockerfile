@@ -1,6 +1,6 @@
 FROM php:7.3-fpm
 
-LABEL version="1.2" \
+LABEL version="1.2 with xdebug" \
   description="An image to run Laravel 6"
 
 RUN apt-get update && apt-get install -y \
@@ -29,5 +29,9 @@ RUN pecl install -o -f redis; \
 COPY --from=composer /usr/bin/composer /usr/bin/composer
 
 RUN composer config -g repo.packagist composer https://mirrors.aliyun.com/composer/
+
+# xdebug
+RUN pecl install xdebug; \
+  docker-php-ext-enable xdebug
 
 WORKDIR /etc/php
