@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y \
   libjpeg62-turbo-dev \
   libpng-dev \
   libpq-dev \
-  libzip-dev zip unzip 
+  libzip-dev zip unzip cron
 
 RUN docker-php-ext-configure gd \
   && docker-php-ext-install -j$(nproc) gd \
