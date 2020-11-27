@@ -23,4 +23,4 @@ jobs:
           # Registry hostname
           #registry: # optional
           # Image tag
-          tag: "$GITHUB_REF"
+          tag: ${{ env.GITHUB_REF }}
