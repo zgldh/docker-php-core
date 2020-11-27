@@ -1,3 +1,3 @@
 # docker-php-core
 
-php7.3-xdebug
+php7.3-xdebug with supercronic
