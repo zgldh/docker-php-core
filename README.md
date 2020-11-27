@@ -1,3 +1,3 @@
 # docker-php-core
 
-php7.3-fpm with cron
+php7.3-fpm with supercronic
