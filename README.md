@@ -1,3 +1,3 @@
 # docker-php-core
 
-php7.4.4-fpm with supercronic, zip unzip, pdo_pgsql pdo_mysql redis support. 
+php8.0.3-fpm-alpine3.13 with supercronic, zip unzip, pdo_pgsql pdo_mysql redis support. 
