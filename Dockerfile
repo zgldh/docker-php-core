@@ -1,6 +1,6 @@
-FROM php:7.4.4-fpm
+FROM php:7.4.16-fpm
 
-LABEL version="7.4.4.1" \
+LABEL version="7.4.16" \
   description="An image to run Laravel 6"
 
 RUN apt-get update && apt-get install -y \
@@ -18,13 +18,14 @@ RUN docker-php-ext-configure gd \
   && docker-php-ext-install bcmath \
   # Mbstring PHP Extension is already installed
   # PDO PHP Extension
-  && docker-php-ext-install pdo pdo_pgsql pdo_mysql
+  && docker-php-ext-install pdo pdo_pgsql pdo_mysql  
+
+RUN pecl install -o -f ev redis; \
+  rm -rf /tmp/pear \
+  && docker-php-ext-enable redis \
+  && docker-php-ext-enable ev 
 # Tokenizer PHP Extension is already installed
 # XML PHP Extension is already installed
-
-RUN pecl install -o -f redis; \
-  rm -rf /tmp/pear \
-  && docker-php-ext-enable redis
 
 # Supercronic
 ENV SUPERCRONIC_URL=https://github.com/aptible/supercronic/releases/download/v0.1.11/supercronic-linux-amd64 \
