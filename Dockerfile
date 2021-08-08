@@ -1,6 +1,6 @@
-FROM php:8.0.9-fpm-alpine
+FROM php:8.0.9-fpm
 
-LABEL version="8.0.9-fpm-alpine" \
+LABEL version="8.0.9-fpm" \
   description="An image to run Laravel 6"
 
 RUN apt-get update && apt-get install -y \
