@@ -1,6 +1,6 @@
-FROM php:8.0.3-fpm
+FROM php:8.0.9-fpm
 
-LABEL version="8.0.3-fpm" \
+LABEL version="8.0.9-fpm" \
   description="An image to run Laravel 6"
 
 RUN apt-get update && apt-get install -y \
@@ -40,5 +40,6 @@ RUN curl -fsSLO "$SUPERCRONIC_URL" \
 COPY --from=composer /usr/bin/composer /usr/bin/composer
 
 RUN composer config -g repo.packagist composer https://mirrors.aliyun.com/composer/
+RUN composer self-update --2
 
 WORKDIR /etc/php
