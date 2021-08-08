@@ -1,4 +1,4 @@
-FROM 8.0.9-fpm-alpine
+FROM php:8.0.9-fpm-alpine
 
 LABEL version="8.0.9-fpm-alpine" \
   description="An image to run Laravel 6"
