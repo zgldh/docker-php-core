@@ -1,6 +1,6 @@
-FROM php:7.4.22-fpm
+FROM php:7.4.26-fpm
 
-LABEL version="7.4.22-fpm" \
+LABEL version="7.4.26-fpm" \
   description="An image to run Laravel 6"
 
 RUN apt-get update && apt-get install -y \
@@ -28,19 +28,33 @@ RUN pecl install -o -f ev redis; \
 # XML PHP Extension is already installed
 
 # Supercronic
-ENV SUPERCRONIC_URL=https://github.com/aptible/supercronic/releases/download/v0.1.11/supercronic-linux-amd64 \
+ENV SUPERCRONIC_URL=https://github.com/aptible/supercronic/releases/download/v0.1.12/supercronic-linux-amd64 \
   SUPERCRONIC=supercronic-linux-amd64 \
   SUPERCRONIC_SHA1SUM=a2e2d47078a8dafc5949491e5ea7267cc721d67c
-
 RUN curl -fsSLO "$SUPERCRONIC_URL" \
  && echo "${SUPERCRONIC_SHA1SUM}  ${SUPERCRONIC}" | sha1sum -c - \
  && chmod +x "$SUPERCRONIC" \
  && mv "$SUPERCRONIC" "/usr/local/bin/${SUPERCRONIC}" \
  && ln -s "/usr/local/bin/${SUPERCRONIC}" /usr/local/bin/supercronic
 
-COPY --from=composer /usr/bin/composer /usr/bin/composer
+# sockets
+RUN docker-php-ext-install sockets
 
-RUN composer config -g repo.packagist composer https://mirrors.aliyun.com/composer/
-RUN composer self-update --2
+# opcache
+RUN docker-php-ext-install opcache
+
+# pcntl && event
+RUN docker-php-ext-install pcntl
+RUN apt-get update && apt-get install -y libevent-dev libssl-dev
+RUN pecl install event && \
+    echo "extension=event.so" > /usr/local/etc/php/conf.d/event.ini
+
+# swoole
+RUN pecl install swoole && \
+    echo "extension=swoole.so" > /usr/local/etc/php/conf.d/swoole.ini
+
+# supervisord
+RUN apt-cache show supervisor && apt-get update && apt-get install -y supervisor
+RUN chmod -R 777 /var/run
 
 WORKDIR /etc/php
