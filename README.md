@@ -14,3 +14,4 @@ php 7.4.26-fpm with:
 - pcntl && event
 - swoole
 - supervisord
+- Composer

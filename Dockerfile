@@ -57,4 +57,9 @@ RUN pecl install swoole && \
 RUN apt-cache show supervisor && apt-get update && apt-get install -y supervisor
 RUN chmod -R 777 /var/run
 
+# composer
+COPY --from=composer /usr/bin/composer /usr/bin/composer
+RUN composer config -g repo.packagist composer https://mirrors.aliyun.com/composer/
+RUN composer self-update --2
+
 WORKDIR /etc/php
