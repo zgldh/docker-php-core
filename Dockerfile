@@ -9,6 +9,7 @@ RUN apt-get update && apt-cache show supervisor && apt-get install -y \
     libjpeg62-turbo-dev \
     libpng-dev \
     libpq-dev \
+    libevent-dev libssl-dev \
     libzip-dev zip unzip cron && \
     apt-get clean
 
@@ -49,7 +50,6 @@ RUN docker-php-ext-install opcache
 
 # pcntl && event
 RUN docker-php-ext-install pcntl
-RUN apt-get update && apt-get install -y libevent-dev libssl-dev
 RUN pecl install event && \
     echo "extension=event.so" > /usr/local/etc/php/conf.d/event.ini
 
@@ -58,21 +58,21 @@ RUN pecl install swoole && \
     echo "extension=swoole.so" > /usr/local/etc/php/conf.d/swoole.ini
 
 # wasmer-php
-RUN curl https://codeload.github.com/wasmerio/wasmer-php/zip/refs/heads/master > master.zip && \
-    unzip master.zip && \
-    cd wasmer-php-master/ext && \
+RUN cd /opt &&  \
+    curl -fsSLO https://github.com/wasmerio/wasmer-php/archive/refs/tags/1.1.0.tar.gz && \
+    tar -xzvf 1.1.0.tar.gz && \
+    rm 1.1.0.tar.gz &&  \
+    cp -r wasmer-php-1.1.0/ext wasmer-php &&  \
+    rm wasmer-php-1.1.0 -rf &&  \
+    cd wasmer-php && \
     phpize && \
     ./configure --enable-wasmer && \
     make && \
-    make test && \
     make install && \
-    docker-php-ext-enable wasm && \
-    cd ../.. && \
-    rm master.zip && \
-    rm wasmer-php-master -rf
+    docker-php-ext-enable wasm
 
 # composer
-COPY --from=composer /usr/bin/composer /usr/bin/composer
+COPY --from=composer:2.0 /usr/bin/composer /usr/local/bin/composer
 RUN composer config -g repo.packagist composer https://mirrors.aliyun.com/composer/
 RUN composer self-update --2
 
