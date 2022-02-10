@@ -1,14 +1,15 @@
-FROM php:8.1.3-fpm
+FROM php:8.1.2-fpm
 
-LABEL version="8.1.3-fpm" \
-  description="An image to run Laravel 6"
+LABEL version="8.1.2-fpm" \
+  description="An image to run Laravel 9"
 
 RUN apt-get update && apt-get install -y \
   libfreetype6-dev \
   libjpeg62-turbo-dev \
   libpng-dev \
   libpq-dev \
-  libzip-dev zip unzip cron
+  libzip-dev zip unzip cron && \
+  apt-get clean
 
 RUN docker-php-ext-configure gd \
   && docker-php-ext-install -j$(nproc) gd \
@@ -35,7 +36,7 @@ RUN curl -fsSLO "$SUPERCRONIC_URL" \
  && echo "${SUPERCRONIC_SHA1SUM}  ${SUPERCRONIC}" | sha1sum -c - \
  && chmod +x "$SUPERCRONIC" \
  && mv "$SUPERCRONIC" "/usr/local/bin/${SUPERCRONIC}" \
- && ln -s "/usr/local/bin/${SUPERCRONIC}" /usr/local/bin/supercronic \
+ && ln -s "/usr/local/bin/${SUPERCRONIC}" /usr/local/bin/supercronic
 
 # sockets
 RUN docker-php-ext-install sockets
@@ -57,8 +58,19 @@ RUN pecl install swoole && \
 RUN apt-cache show supervisor && apt-get update && apt-get install -y supervisor
 RUN chmod -R 777 /var/run
 
-COPY --from=composer /usr/bin/composer /usr/bin/composer
+# wasmer-php
+RUN curl https://codeload.github.com/wasmerio/wasmer-php/zip/refs/heads/master > master.zip && \
+    unzip master.zip && \
+    cd wasmer-php-master/ext && \
+    phpize && \
+    ./configure --enable-wasmer && \
+    make && \
+    make test && \
+    make install && \
+    docker-php-ext-install wasmer
 
+# composer
+COPY --from=composer /usr/bin/composer /usr/bin/composer
 RUN composer config -g repo.packagist composer https://mirrors.aliyun.com/composer/
 RUN composer self-update --2
 

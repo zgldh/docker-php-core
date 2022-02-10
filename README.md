@@ -1,6 +1,6 @@
 # docker-php-core
 
-8.1.3-fpm with
+8.1.2-fpm with
 - composer2
 - zip unzip
 - pdo_pgsql
