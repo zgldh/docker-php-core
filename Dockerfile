@@ -19,23 +19,43 @@ RUN docker-php-ext-configure gd \
   # Mbstring PHP Extension is already installed
   # PDO PHP Extension
   && docker-php-ext-install pdo pdo_pgsql pdo_mysql
+
+RUN pecl install -o -f ev redis; \
+  rm -rf /tmp/pear \
+  && docker-php-ext-enable redis \
+  && docker-php-ext-enable ev
 # Tokenizer PHP Extension is already installed
 # XML PHP Extension is already installed
 
-RUN pecl install -o -f redis; \
-  rm -rf /tmp/pear \
-  && docker-php-ext-enable redis
-
 # Supercronic
-ENV SUPERCRONIC_URL=https://github.com/aptible/supercronic/releases/download/v0.1.11/supercronic-linux-amd64 \
+ENV SUPERCRONIC_URL=https://github.com/aptible/supercronic/releases/download/v0.1.12/supercronic-linux-amd64 \
   SUPERCRONIC=supercronic-linux-amd64 \
-  SUPERCRONIC_SHA1SUM=a2e2d47078a8dafc5949491e5ea7267cc721d67c
-
+  SUPERCRONIC_SHA1SUM=048b95b48b708983effb2e5c935a1ef8483d9e3e
 RUN curl -fsSLO "$SUPERCRONIC_URL" \
  && echo "${SUPERCRONIC_SHA1SUM}  ${SUPERCRONIC}" | sha1sum -c - \
  && chmod +x "$SUPERCRONIC" \
  && mv "$SUPERCRONIC" "/usr/local/bin/${SUPERCRONIC}" \
- && ln -s "/usr/local/bin/${SUPERCRONIC}" /usr/local/bin/supercronic
+ && ln -s "/usr/local/bin/${SUPERCRONIC}" /usr/local/bin/supercronic \
+
+# sockets
+RUN docker-php-ext-install sockets
+
+# opcache
+RUN docker-php-ext-install opcache
+
+# pcntl && event
+RUN docker-php-ext-install pcntl
+RUN apt-get update && apt-get install -y libevent-dev libssl-dev
+RUN pecl install event && \
+    echo "extension=event.so" > /usr/local/etc/php/conf.d/event.ini
+
+# swoole
+RUN pecl install swoole && \
+    echo "extension=swoole.so" > /usr/local/etc/php/conf.d/swoole.ini
+
+# supervisord
+RUN apt-cache show supervisor && apt-get update && apt-get install -y supervisor
+RUN chmod -R 777 /var/run
 
 COPY --from=composer /usr/bin/composer /usr/bin/composer
 
