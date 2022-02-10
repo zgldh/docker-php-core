@@ -66,7 +66,8 @@ RUN curl https://codeload.github.com/wasmerio/wasmer-php/zip/refs/heads/master >
     make && \
     make test && \
     make install && \
-    docker-php-ext-install wasmer && \
+    docker-php-ext-enable wasm && \
+    cd ../.. && \
     rm master.zip && \
     rm wasmer-php-master -rf
 
