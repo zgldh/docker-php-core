@@ -1,7 +1,7 @@
-FROM php:8.1.2-fpm
+FROM php:8.0.15-fpm
 
-LABEL version="8.1.2-fpm" \
-  description="An image to run Laravel 9"
+LABEL version="8.0.15-fpm" \
+  description="An image to run Laravel 6"
 
 RUN apt-get update && apt-cache show supervisor && apt-get install -y \
     supervisor \
