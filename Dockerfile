@@ -62,12 +62,20 @@ COPY --from=composer:2.0 /usr/bin/composer /usr/bin/composer
 RUN composer config -g repo.packagist composer https://mirrors.aliyun.com/composer/
 RUN composer self-update --2
 
-# Lua
+# Lua and cjson
 RUN cp /usr/include/lua5.4/*.h /usr/include/ && \
     cp /usr/lib/x86_64-linux-gnu/liblua5.4.a /usr/lib/liblua.a && \
     cp /usr/lib/x86_64-linux-gnu/liblua5.4.so /usr/lib/liblua.so && \
     pecl install lua && \
-    echo "extension=lua.so" > /usr/local/etc/php/conf.d/lua.ini
+    echo "extension=lua.so" > /usr/local/etc/php/conf.d/lua.ini \
+RUN curl -fsSLO https://www.kyne.com.au/~mark/software/download/lua-cjson-2.1.0.tar.gz && \
+    tar xzvf lua-cjson-2.1.0.tar.gz && \
+    cd lua-cjson-2.1.0 && \
+    sed -i "s/LUA_VERSION =       5.1/LUA_VERSION =       5.4/" Makefile && \
+    sed -i "s/LUA_MODULE_DIR =    \$(PREFIX)\/share\/lua\/\$(LUA_VERSION)/LUA_MODULE_DIR =    \$(PREFIX)\/share\/lua\$(LUA_VERSION)/" Makefile && \
+    make && \
+    make install && \
+    rm ../lua-cjson-2.1.0.tar.gz
 
 RUN rm -rf /tmp/pear && \
     apt-get clean
