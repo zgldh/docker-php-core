@@ -1,6 +1,6 @@
-FROM php:7.4.26-fpm
+FROM php:7.4.28-fpm
 
-LABEL version="7.4.26-fpm" \
+LABEL version="7.4.28-fpm" \
   description="An image to run Laravel 6"
 
 RUN apt-get update && apt-get install -y \
@@ -8,7 +8,8 @@ RUN apt-get update && apt-get install -y \
   libjpeg62-turbo-dev \
   libpng-dev \
   libpq-dev \
-  libzip-dev zip unzip cron
+  libzip-dev zip unzip cron \
+  lua5.4 liblua5.4-0 liblua5.4-dev
 
 RUN docker-php-ext-configure gd \
   && docker-php-ext-install -j$(nproc) gd \
@@ -20,8 +21,7 @@ RUN docker-php-ext-configure gd \
   # PDO PHP Extension
   && docker-php-ext-install pdo pdo_pgsql pdo_mysql  
 
-RUN pecl install -o -f ev redis; \
-  rm -rf /tmp/pear \
+RUN pecl install -o -f ev redis \
   && docker-php-ext-enable redis \
   && docker-php-ext-enable ev 
 # Tokenizer PHP Extension is already installed
@@ -58,8 +58,18 @@ RUN apt-cache show supervisor && apt-get update && apt-get install -y supervisor
 RUN chmod -R 777 /var/run
 
 # composer
-COPY --from=composer /usr/bin/composer /usr/bin/composer
+COPY --from=composer:2.0 /usr/bin/composer /usr/bin/composer
 RUN composer config -g repo.packagist composer https://mirrors.aliyun.com/composer/
 RUN composer self-update --2
+
+# Lua
+RUN cp /usr/include/lua5.4/*.h /usr/include/ && \
+    cp /usr/lib/x86_64-linux-gnu/liblua5.4.a /usr/lib/liblua.a && \
+    cp /usr/lib/x86_64-linux-gnu/liblua5.4.so /usr/lib/liblua.so && \
+    pecl install lua && \
+    echo "extension=lua.so" > /usr/local/etc/php/conf.d/lua.ini
+
+RUN rm -rf /tmp/pear && \
+    apt-get clean
 
 WORKDIR /etc/php

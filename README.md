@@ -1,6 +1,6 @@
 # docker-php-core
 
-php 7.4.26-fpm with:
+php 7.4.28-fpm with:
 - composer2
 - supercronic
 - zip unzip
@@ -15,3 +15,4 @@ php 7.4.26-fpm with:
 - swoole
 - supervisord
 - Composer
+- Lua
