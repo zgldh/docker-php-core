@@ -67,7 +67,7 @@ RUN cp /usr/include/lua5.4/*.h /usr/include/ && \
     cp /usr/lib/x86_64-linux-gnu/liblua5.4.a /usr/lib/liblua.a && \
     cp /usr/lib/x86_64-linux-gnu/liblua5.4.so /usr/lib/liblua.so && \
     pecl install lua && \
-    echo "extension=lua.so" > /usr/local/etc/php/conf.d/lua.ini \
+    echo "extension=lua.so" > /usr/local/etc/php/conf.d/lua.ini
 RUN cd ~ && curl -fsSLO https://www.kyne.com.au/~mark/software/download/lua-cjson-2.1.0.tar.gz && \
     tar xzvf lua-cjson-2.1.0.tar.gz && \
     cd lua-cjson-2.1.0 && \
