@@ -1,7 +1,7 @@
 FROM php:7.0.33-fpm
 
 LABEL version="7.0.33-fpm" \
-  description="An image of PHP 7.0.33-fpm with modules and Supercronic"
+  description="An image of PHP 7.0.33-fpm with extended modules and Supercronic"
 
 RUN apt-get update && apt-cache show supervisor && apt-get install -y \
     supervisor \
@@ -9,7 +9,10 @@ RUN apt-get update && apt-cache show supervisor && apt-get install -y \
     libjpeg62-turbo-dev \
     libpng-dev \
     libpq-dev \
-    libzip-dev zip unzip cron && \
+    libmcrypt-dev\
+    libxml2-dev\
+    libxslt-dev\
+    libzip-dev zip unzip cron  && \
     apt-get clean
 
 RUN chmod -R 777 /var/run
@@ -23,6 +26,10 @@ RUN docker-php-ext-configure gd \
   # Mbstring PHP Extension is already installed
   # PDO PHP Extension
   && docker-php-ext-install pdo pdo_pgsql pdo_mysql
+
+RUN docker-php-ext-install calendar exif \
+    gettext mcrypt mysqli pcntl shmop \
+    sysvmsg sysvsem sysvshm wddx xsl
 
 RUN pecl install -o -f ev redis; \
   rm -rf /tmp/pear \

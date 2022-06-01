@@ -1,6 +1,6 @@
 # docker-php-core
 
-7.0.33-fpm with
+7.0.33-fpm with extended modules
 - composer2
 - zip unzip
 - pdo_pgsql
@@ -11,3 +11,48 @@
 - sockets
 - opcache
 - supervisord
+- calendar
+- Core
+- ctype
+- curl
+- date
+- dom
+- exif
+- fileinfo
+- filter
+- ftp
+- gd
+- gettext
+- hash
+- iconv
+- json
+- libxml
+- mbstring
+- mcrypt
+- mysqli
+- mysqlnd
+- networkbench
+- openssl
+- pcntl
+- pcre
+- PDO
+- Phar
+- posix
+- readline
+- Reflection
+- session
+- shmop
+- SimpleXML
+- sockets
+- SPL
+- standard
+- sysvmsg
+- sysvsem
+- sysvshm
+- tokenizer
+- wddx
+- xml
+- xmlreader
+- xmlwriter
+- xsl
+- zlib
