@@ -1,6 +1,6 @@
 # docker-php-core
 
-8.1.2-fpm with
+7.0.33-fpm with
 - composer2
 - zip unzip
 - pdo_pgsql
@@ -10,7 +10,4 @@
 - Supercronic
 - sockets
 - opcache
-- pcntl && event
-- swoole
 - supervisord
-- wasmer-php

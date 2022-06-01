@@ -1,7 +1,7 @@
-FROM php:8.1.2-fpm
+FROM php:7.0.33-fpm
 
-LABEL version="8.1.2-fpm" \
-  description="An image to run Laravel 9"
+LABEL version="7.0.33-fpm" \
+  description="An image of PHP 7.0.33-fpm with modules and Supercronic"
 
 RUN apt-get update && apt-cache show supervisor && apt-get install -y \
     supervisor \
@@ -9,7 +9,6 @@ RUN apt-get update && apt-cache show supervisor && apt-get install -y \
     libjpeg62-turbo-dev \
     libpng-dev \
     libpq-dev \
-    libevent-dev libssl-dev \
     libzip-dev zip unzip cron && \
     apt-get clean
 
@@ -47,29 +46,6 @@ RUN CFLAGS="$CFLAGS -D_GNU_SOURCE" docker-php-ext-install sockets
 
 # opcache
 RUN docker-php-ext-install opcache
-
-# pcntl && event
-RUN docker-php-ext-install pcntl
-RUN pecl install event && \
-    echo "extension=event.so" > /usr/local/etc/php/conf.d/event.ini
-
-# swoole
-RUN pecl install swoole && \
-    echo "extension=swoole.so" > /usr/local/etc/php/conf.d/swoole.ini
-
-# wasmer-php
-RUN cd /opt &&  \
-    curl -fsSLO https://github.com/wasmerio/wasmer-php/archive/refs/tags/1.1.0.tar.gz && \
-    tar -xzvf 1.1.0.tar.gz && \
-    rm 1.1.0.tar.gz &&  \
-    cp -r wasmer-php-1.1.0/ext wasmer-php &&  \
-    rm wasmer-php-1.1.0 -rf &&  \
-    cd wasmer-php && \
-    phpize && \
-    ./configure --enable-wasmer && \
-    make && \
-    make install && \
-    docker-php-ext-enable wasm
 
 # composer
 COPY --from=composer:2.0 /usr/bin/composer /usr/local/bin/composer
