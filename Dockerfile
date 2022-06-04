@@ -5,6 +5,7 @@ LABEL version="7.0.33-fpm" \
 
 RUN apt-get update && apt-cache show supervisor && apt-get install -y \
     supervisor \
+    libcurl3-dev \
     libfreetype6-dev \
     libjpeg62-turbo-dev \
     libpng-dev \
@@ -17,8 +18,10 @@ RUN apt-get update && apt-cache show supervisor && apt-get install -y \
 
 RUN chmod -R 777 /var/run
 
-RUN docker-php-ext-configure gd \
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-png \
   && docker-php-ext-install -j$(nproc) gd \
+  # Install curl
+  && docker-php-ext-install curl \
   # Install the zip extension
   && docker-php-ext-install zip \
   # BCMath PHP Extension
@@ -39,14 +42,13 @@ RUN pecl install -o -f ev redis; \
 # XML PHP Extension is already installed
 
 # Supercronic
-ENV SUPERCRONIC_URL=https://github.com/aptible/supercronic/releases/download/v0.1.12/supercronic-linux-amd64 \
-  SUPERCRONIC=supercronic-linux-amd64 \
-  SUPERCRONIC_SHA1SUM=048b95b48b708983effb2e5c935a1ef8483d9e3e
-RUN curl -fsSLO "$SUPERCRONIC_URL" \
- && echo "${SUPERCRONIC_SHA1SUM}  ${SUPERCRONIC}" | sha1sum -c - \
- && chmod +x "$SUPERCRONIC" \
- && mv "$SUPERCRONIC" "/usr/local/bin/${SUPERCRONIC}" \
- && ln -s "/usr/local/bin/${SUPERCRONIC}" /usr/local/bin/supercronic
+ENV SUPERCRONIC=supercronic-linux-amd64
+# Choose different version for your host.
+#ENV SUPERCRONIC=supercronic-linux-386
+#ENV SUPERCRONIC=supercronic-linux-arm
+#ENV SUPERCRONIC=supercronic-linux-arm64
+COPY --from=zgldh/docker-supercronic:0.1.12 "/tmp/${SUPERCRONIC}" "/usr/local/bin/${SUPERCRONIC}"
+RUN ln -s "/usr/local/bin/${SUPERCRONIC}" /usr/local/bin/supercronic
 
 # sockets
 RUN CFLAGS="$CFLAGS -D_GNU_SOURCE" docker-php-ext-install sockets
