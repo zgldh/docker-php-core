@@ -1,6 +1,8 @@
 # docker-php-core
 
-php 7.4.29-fpm with:
+php 7.4.29-fpm-nginx with:
+
+- Nginx + SSL
 - composer2
 - supercronic
 - zip unzip

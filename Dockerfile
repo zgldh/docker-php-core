@@ -1,6 +1,6 @@
 FROM php:7.4.29-fpm
 
-LABEL version="7.4.29-fpm" \
+LABEL version="7.4.29-fpm-nginx" \
   description="An image to run Laravel 6"
 
 RUN apt-get update && apt-get install -y \
@@ -9,7 +9,8 @@ RUN apt-get update && apt-get install -y \
   libpng-dev \
   libpq-dev \
   libzip-dev zip unzip cron \
-  lua5.4 liblua5.4-0 liblua5.4-dev
+  lua5.4 liblua5.4-0 liblua5.4-dev \
+  nginx openssl
 
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
   && docker-php-ext-install -j$(nproc) gd \
