@@ -1,6 +1,6 @@
-FROM php:7.4.28-fpm
+FROM php:7.4.29-fpm
 
-LABEL version="7.4.28-fpm" \
+LABEL version="7.4.29-fpm" \
   description="An image to run Laravel 6"
 
 RUN apt-get update && apt-get install -y \

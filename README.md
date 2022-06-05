@@ -1,6 +1,6 @@
 # docker-php-core
 
-php 7.4.28-fpm with:
+php 7.4.29-fpm with:
 - composer2
 - supercronic
 - zip unzip
