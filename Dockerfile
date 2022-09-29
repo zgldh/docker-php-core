@@ -13,7 +13,7 @@ RUN apt-get update && apt-cache show supervisor && apt-get install -y \
     libmcrypt-dev\
     libxml2-dev\
     libxslt-dev\
-    libpng12-dev \
+    libpng-dev \
     libjpeg-dev \
     libzip-dev zip unzip cron  && \
     apt-get clean
