@@ -13,12 +13,18 @@ RUN apt-get update && apt-cache show supervisor && apt-get install -y \
     libmcrypt-dev\
     libxml2-dev\
     libxslt-dev\
+    libpng12-dev \
+    libjpeg-dev \
     libzip-dev zip unzip cron  && \
     apt-get clean
 
 RUN chmod -R 777 /var/run
 
-RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-png \
+RUN docker-php-ext-configure gd \
+  --enable-gd-native-ttf \
+  --with-freetype-dir=/usr/include/freetype2 \
+  --with-png-dir=/usr/include \
+  --with-jpeg-dir=/usr/include \
   && docker-php-ext-install -j$(nproc) gd \
   # Install curl
   && docker-php-ext-install curl \
