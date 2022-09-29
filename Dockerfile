@@ -18,7 +18,7 @@ RUN apt-get update && apt-cache show supervisor && apt-get install -y \
     libzip-dev zip unzip cron  && \
     apt-get clean
 
-RUN chmod -R 777 /var/run
+RUN chmod -R 777 /var/run /var/log
 
 RUN docker-php-ext-configure gd \
   --enable-gd-native-ttf \
