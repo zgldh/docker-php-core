@@ -32,8 +32,8 @@ RUN docker-php-ext-configure gd \
 
 RUN docker-php-ext-install calendar exif \
   gettext mysqli shmop \
-  sysvmsg sysvsem sysvshm xsl \
-  && docker-php-ext-enable mcrypt intl
+  sysvmsg sysvsem sysvshm xsl intl\
+  && docker-php-ext-enable mcrypt
 
 RUN pecl install -o -f ev redis; \
   rm -rf /tmp/pear \
