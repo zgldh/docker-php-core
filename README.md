@@ -7,13 +7,15 @@
 - pdo_mysql
 - redis
 - [ev](https://www.php.net/manual/zh/book.ev.php)
-- Supercronic
-- sockets
 - opcache
 - pcntl && event
+- Supercronic
+- sockets
 - swoole
 - supervisord
 - wasmer-php
+- mcrypt
+- intl
 - nginx
 
 # Usage
