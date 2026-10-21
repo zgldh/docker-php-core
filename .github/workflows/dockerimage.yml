@@ -75,12 +75,16 @@ jobs:
           fi
           echo "== expected extensions =="
           docker run --rm --entrypoint php "$IMAGE" -m > /tmp/modules.txt
-          for ext in bcmath gd zip pdo_mysql pdo_pgsql sockets opcache pcntl ev event redis swoole lua; do
+          for ext in bcmath gd zip pdo_mysql pdo_pgsql sockets pcntl ev event redis swoole lua; do
             grep -qi "^${ext}$" /tmp/modules.txt || {
               echo "missing PHP extension: ${ext}" >&2
               exit 1
             }
           done
+          grep -qi '^Zend OPcache$' /tmp/modules.txt || {
+            echo "missing PHP extension: opcache" >&2
+            exit 1
+          }
           echo "== fpm config =="
           docker run --rm --entrypoint php-fpm "$IMAGE" -t
           echo "== OOM hardening (CVE-2026-109618 backport hard-exits instead of bailing out) =="
