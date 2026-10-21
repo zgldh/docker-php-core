@@ -104,8 +104,16 @@ RUN docker-php-ext-configure gd \
  && docker-php-ext-install -j"$(nproc)" bcmath \
  && docker-php-ext-install -j"$(nproc)" pdo pdo_pgsql pdo_mysql
 
-RUN pecl install -o -f ev-1.1.5 redis-5.3.7 \
- && docker-php-ext-enable redis ev
+# pecl.php.net's channel REST endpoint has been intermittently returning
+# "No releases available", so download the pinned tarballs directly (with
+# retries) and install them from the local files.
+RUN set -eux; \
+    cd /tmp; \
+    curl -fsSL --retry 5 --retry-delay 3 -o ev-1.1.5.tgz https://pecl.php.net/get/ev-1.1.5.tgz; \
+    curl -fsSL --retry 5 --retry-delay 3 -o redis-5.3.7.tgz https://pecl.php.net/get/redis-5.3.7.tgz; \
+    pecl install -o -f /tmp/ev-1.1.5.tgz /tmp/redis-5.3.7.tgz; \
+    docker-php-ext-enable redis ev; \
+    rm -f /tmp/ev-1.1.5.tgz /tmp/redis-5.3.7.tgz
 
 # Supercronic
 ENV SUPERCRONIC_URL=https://github.com/aptible/supercronic/releases/download/v0.1.12/supercronic-linux-amd64 \
@@ -129,12 +137,20 @@ RUN docker-php-ext-install -j"$(nproc)" pcntl
 # event
 RUN apt-get -o Acquire::Check-Valid-Until=false update && apt-get install -y --no-install-recommends libevent-dev libssl-dev \
  && rm -rf /var/lib/apt/lists/*
-RUN pecl install -o -f event-3.0.6 \
- && printf 'extension=event.so\n' > /usr/local/etc/php/conf.d/event.ini
+RUN set -eux; \
+    cd /tmp; \
+    curl -fsSL --retry 5 --retry-delay 3 -o event-3.0.6.tgz https://pecl.php.net/get/event-3.0.6.tgz; \
+    pecl install -o -f /tmp/event-3.0.6.tgz; \
+    printf 'extension=event.so\n' > /usr/local/etc/php/conf.d/event.ini; \
+    rm -f /tmp/event-3.0.6.tgz
 
 # swoole
-RUN pecl install -o -f swoole-4.8.6 \
- && printf 'extension=swoole.so\n' > /usr/local/etc/php/conf.d/swoole.ini
+RUN set -eux; \
+    cd /tmp; \
+    curl -fsSL --retry 5 --retry-delay 3 -o swoole-4.8.6.tgz https://pecl.php.net/get/swoole-4.8.6.tgz; \
+    pecl install -o -f /tmp/swoole-4.8.6.tgz; \
+    printf 'extension=swoole.so\n' > /usr/local/etc/php/conf.d/swoole.ini; \
+    rm -f /tmp/swoole-4.8.6.tgz
 
 # supervisord
 RUN apt-get -o Acquire::Check-Valid-Until=false update && apt-get install -y --no-install-recommends supervisor \
@@ -147,11 +163,15 @@ RUN composer config -g repo.packagist composer https://mirrors.aliyun.com/compos
 RUN composer self-update --2
 
 # Lua with cjson module
-RUN cp /usr/include/lua5.4/*.h /usr/include/ \
- && cp /usr/lib/x86_64-linux-gnu/liblua5.4.a /usr/lib/liblua.a \
- && cp /usr/lib/x86_64-linux-gnu/liblua5.4.so /usr/lib/liblua.so \
- && pecl install -o -f lua-2.0.7 \
- && printf 'extension=lua.so\n' > /usr/local/etc/php/conf.d/lua.ini
+RUN set -eux; \
+    cp /usr/include/lua5.4/*.h /usr/include/; \
+    cp /usr/lib/x86_64-linux-gnu/liblua5.4.a /usr/lib/liblua.a; \
+    cp /usr/lib/x86_64-linux-gnu/liblua5.4.so /usr/lib/liblua.so; \
+    cd /tmp; \
+    curl -fsSL --retry 5 --retry-delay 3 -o lua-2.0.7.tgz https://pecl.php.net/get/lua-2.0.7.tgz; \
+    pecl install -o -f /tmp/lua-2.0.7.tgz; \
+    printf 'extension=lua.so\n' > /usr/local/etc/php/conf.d/lua.ini; \
+    rm -f /tmp/lua-2.0.7.tgz
 
 # lua-cjson 2.1.0 vendored under vendor/ because the historical download host
 # (kyne.com.au) is no longer serving the tarball. sha256:
