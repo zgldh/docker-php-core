@@ -1,28 +1,111 @@
 name: Docker Image CI
 
 on:
-  create:
+  push:
+    tags:
+      - '7.4.33-fpm-cve-*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Image tag to build and push'
+        required: true
+        default: '7.4.33-fpm-cve-2026-109618-109619'
+
+permissions:
+  contents: read
+
+env:
+  IMAGE_NAME: zgldh/docker-php-core
 
 jobs:
-  build:
+  build-and-push:
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     steps:
-      - name: Get the version
-        id: get_version
-        run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
-      - uses: actions/checkout@v2
-      - name: Docker Action
-        # You may pin to the exact commit or the version.
-        # uses: zenato/docker-action@8309ea4d790d074676660449b9f2bcbcae25cdb9
-        uses: zenato/docker-action@v1.0.0
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve image tag
+        id: meta
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            tag="${{ inputs.tag }}"
+          else
+            tag="${GITHUB_REF_NAME}"
+          fi
+          if [ -z "$tag" ]; then
+            echo "image tag is empty" >&2
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "Image tag: $tag"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
         with:
-          # Registry username
           username: zgldh
-          # Registry password
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-          # Repository on registry
-          repository: zgldh/docker-php-core
-          # Registry hostname
-          #registry: # optional
-          # Image tag
-          tag: ${{ steps.get_version.outputs.VERSION }}
+
+      - name: Build image (load for smoke test)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          load: true
+          tags: ${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke test
+        env:
+          IMAGE: ${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tag }}
+        run: |
+          set -euo pipefail
+          echo "== php version =="
+          docker run --rm --entrypoint php "$IMAGE" -v
+          echo "== php ini hardening marker (only present with the CVE backport) =="
+          docker run --rm --entrypoint php "$IMAGE" -i | grep -q 'max_multipart_body_parts' || {
+            echo "max_multipart_body_parts is missing: the CVE backport was not built into this image" >&2
+            exit 1
+          }
+          echo "== expected extensions =="
+          docker run --rm --entrypoint php "$IMAGE" -m > /tmp/modules.txt
+          for ext in bcmath gd zip pdo_mysql pdo_pgsql sockets opcache pcntl ev event redis swoole lua; do
+            grep -qi "^${ext}$" /tmp/modules.txt || {
+              echo "missing PHP extension: ${ext}" >&2
+              exit 1
+            }
+          done
+          echo "== fpm config =="
+          docker run --rm --entrypoint php-fpm "$IMAGE" -t
+          echo "== OOM hardening (CVE-2026-109618 backport hard-exits instead of bailing out) =="
+          docker run --rm --entrypoint sh "$IMAGE" -c '
+            set -eu
+            php -d memory_limit=32M -r "register_shutdown_function(function () { file_put_contents(\"/tmp/shutdown-ran\", \"1\"); }); str_repeat(\"x\", 64 * 1024 * 1024);" >/tmp/oom.out 2>&1 || true
+            if [ -f /tmp/shutdown-ran ]; then
+              echo "shutdown function ran after OOM; the CVE backport is missing" >&2
+              cat /tmp/oom.out >&2
+              exit 1
+            fi
+            grep -q "Fatal error" /tmp/oom.out || {
+              echo "unexpected OOM output" >&2
+              cat /tmp/oom.out >&2
+              exit 1
+            }
+          '
+          echo "smoke test passed"
+
+      - name: Push image
+        env:
+          IMAGE: ${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tag }}
+        run: docker push "$IMAGE"
+
+      - name: Image summary
+        env:
+          IMAGE: ${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tag }}
+        run: |
+          docker image inspect "$IMAGE" --format '{{.Id}} {{.Created}}'

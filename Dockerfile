@@ -1,41 +1,115 @@
-FROM php:8.1.2-fpm
 
-LABEL version="8.1.2-fpm" \
-  description="An image to run Laravel 9"
+# PHP 7.4.33 with the official PHP 7.4 security backport for
+# CVE-2026-109618 (RCE via OOM corruption) and CVE-2026-109619 (RCE via stale
+# global state).
+#
+# PHP 7.4 is end-of-life and no longer receives regular releases. The PHP
+# security team published minimal source backports for PHP 7.4, 8.0 and 8.1:
+#   https://github.com/php/php-src/tree/PHP-7.4-CVE-2026-109618-109619
+#   commit 712e60f9edfd03f0960fc4fc3c2c375f42b90aa2
+#   ("Avoid state corruption via bailout", fix GHSA-w8hw-w9fx-j79w and
+#   GHSA-6wmf-4rv5-p3rp)
+# Advisory: https://www.php.net/archive/2026.php#2026-10-21-5
+#
+# This image is based on php:7.4.33-fpm (the last 7.4 release, which already
+# contains the 7.4.29-7.4.33 security fixes) and rebuilds the PHP core from the
+# source tarball bundled in the official image with the backport applied. The
+# configure flags are copied verbatim from `php -i` of the official image, so
+# the rebuilt runtime differs from php:7.4.33-fpm only by the patch.
+#
+# The patch is vendored under patches/ for a reproducible, auditable build.
+# See docs/CVE-2026-109618-109619.md for verification evidence.
+FROM php:7.4.33-fpm
 
-RUN apt-get update && apt-cache show supervisor && apt-get install -y \
-    supervisor \
-    libfreetype6-dev \
-    libjpeg62-turbo-dev \
-    libpng-dev \
-    libpq-dev \
-    libevent-dev libssl-dev \
-    libzip-dev zip unzip cron && \
-    apt-get clean
+LABEL version="7.4.33-fpm-cve-2026-109618-109619" \
+  description="PHP 7.4.33 with the official backport for CVE-2026-109618 / CVE-2026-109619"
 
-RUN chmod -R 777 /var/run
+COPY patches/php-7.4-CVE-2026-109618-109619.patch /tmp/cve-2026-109618-109619.patch
+
+# Debian 11 (bullseye) reached end of life in 2026 and the security archive is
+# no longer served from deb.debian.org. Pin the apt sources to the snapshot the
+# official php:7.4.33-fpm image was built from (2022-11-14) so builds stay
+# reproducible and the installed libraries match the base image.
+RUN set -eux; \
+    sed -i \
+        -e 's|^deb http://deb.debian.org/debian bullseye main$|deb http://snapshot.debian.org/archive/debian/20221114T000000Z bullseye main|' \
+        -e 's|^deb http://deb.debian.org/debian-security bullseye-security main$|deb http://snapshot.debian.org/archive/debian-security/20221114T000000Z bullseye-security main|' \
+        -e 's|^deb http://deb.debian.org/debian bullseye-updates main$|deb http://snapshot.debian.org/archive/debian/20221114T000000Z bullseye-updates main|' \
+        /etc/apt/sources.list; \
+    apt-get -o Acquire::Check-Valid-Until=false update; \
+    apt-get install -y --no-install-recommends \
+        bison \
+        libargon2-dev \
+        libcurl4-openssl-dev \
+        libonig-dev \
+        libreadline-dev \
+        libsodium-dev \
+        libsqlite3-dev \
+        libssl-dev \
+        libxml2-dev \
+        zlib1g-dev; \
+    docker-php-source extract; \
+    cd /usr/src/php; \
+    patch --batch --forward -p1 < /tmp/cve-2026-109618-109619.patch; \
+    gnuArch="$(dpkg-architecture --query DEB_BUILD_GNU_TYPE)"; \
+    debMultiarch="$(dpkg-architecture --query DEB_BUILD_MULTIARCH)"; \
+    ./configure \
+        --build="$gnuArch" \
+        --with-config-file-path="$PHP_INI_DIR" \
+        --with-config-file-scan-dir="$PHP_INI_DIR/conf.d" \
+        --enable-option-checking=fatal \
+        --with-mhash \
+        --with-pic \
+        --enable-ftp \
+        --enable-mbstring \
+        --enable-mysqlnd \
+        --with-password-argon2 \
+        --with-sodium=shared \
+        --with-pdo-sqlite=/usr \
+        --with-sqlite3=/usr \
+        --with-curl \
+        --with-iconv \
+        --with-openssl \
+        --with-readline \
+        --with-zlib \
+        --disable-phpdbg \
+        --with-pear \
+        --with-libdir="lib/$debMultiarch" \
+        --disable-cgi \
+        --enable-fpm \
+        --with-fpm-user=www-data \
+        --with-fpm-group=www-data; \
+    make -j"$(nproc)"; \
+    make install; \
+    docker-php-source delete; \
+    rm -f /tmp/cve-2026-109618-109619.patch
+
+# Same packages/extensions as zgldh/docker-php-core:7.4.28-fpm. Extension
+# versions are pinned to the versions that image shipped, so moving to 7.4.33
+# does not silently change extension behavior.
+RUN apt-get -o Acquire::Check-Valid-Until=false update && apt-get install -y --no-install-recommends \
+        libfreetype6-dev \
+        libjpeg62-turbo-dev \
+        libpng-dev \
+        libpq-dev \
+        libzip-dev \
+        zip unzip cron \
+        lua5.4 liblua5.4-0 liblua5.4-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 RUN docker-php-ext-configure gd \
-  && docker-php-ext-install -j$(nproc) gd \
-  # Install the zip extension
-  && docker-php-ext-install zip \
-  # BCMath PHP Extension
-  && docker-php-ext-install bcmath \
-  # Mbstring PHP Extension is already installed
-  # PDO PHP Extension
-  && docker-php-ext-install pdo pdo_pgsql pdo_mysql
+ && docker-php-ext-install -j"$(nproc)" gd \
+ && docker-php-ext-install -j"$(nproc)" zip \
+ && docker-php-ext-install -j"$(nproc)" bcmath \
+ && docker-php-ext-install -j"$(nproc)" pdo pdo_pgsql pdo_mysql
 
-RUN pecl install -o -f ev redis; \
-  rm -rf /tmp/pear \
-  && docker-php-ext-enable redis \
-  && docker-php-ext-enable ev
-# Tokenizer PHP Extension is already installed
-# XML PHP Extension is already installed
+RUN pecl install -o -f ev-1.1.5 redis-5.3.7 \
+ && docker-php-ext-enable redis ev
 
 # Supercronic
 ENV SUPERCRONIC_URL=https://github.com/aptible/supercronic/releases/download/v0.1.12/supercronic-linux-amd64 \
-  SUPERCRONIC=supercronic-linux-amd64 \
-  SUPERCRONIC_SHA1SUM=048b95b48b708983effb2e5c935a1ef8483d9e3e
+    SUPERCRONIC=supercronic-linux-amd64 \
+    SUPERCRONIC_SHA1SUM=048b95b48b708983effb2e5c935a1ef8483d9e3e
 RUN curl -fsSLO "$SUPERCRONIC_URL" \
  && echo "${SUPERCRONIC_SHA1SUM}  ${SUPERCRONIC}" | sha1sum -c - \
  && chmod +x "$SUPERCRONIC" \
@@ -43,37 +117,57 @@ RUN curl -fsSLO "$SUPERCRONIC_URL" \
  && ln -s "/usr/local/bin/${SUPERCRONIC}" /usr/local/bin/supercronic
 
 # sockets
-RUN CFLAGS="$CFLAGS -D_GNU_SOURCE" docker-php-ext-install sockets
+RUN docker-php-ext-install -j"$(nproc)" sockets
 
 # opcache
-RUN docker-php-ext-install opcache
+RUN docker-php-ext-install -j"$(nproc)" opcache
 
-# pcntl && event
-RUN docker-php-ext-install pcntl
-RUN pecl install event && \
-    echo "extension=event.so" > /usr/local/etc/php/conf.d/event.ini
+# pcntl
+RUN docker-php-ext-install -j"$(nproc)" pcntl
+
+# event
+RUN apt-get -o Acquire::Check-Valid-Until=false update && apt-get install -y --no-install-recommends libevent-dev libssl-dev \
+ && rm -rf /var/lib/apt/lists/*
+RUN pecl install -o -f event-3.0.6 \
+ && printf 'extension=event.so\n' > /usr/local/etc/php/conf.d/event.ini
 
 # swoole
-RUN pecl install swoole && \
-    echo "extension=swoole.so" > /usr/local/etc/php/conf.d/swoole.ini
+RUN pecl install -o -f swoole-4.8.6 \
+ && printf 'extension=swoole.so\n' > /usr/local/etc/php/conf.d/swoole.ini
 
-# wasmer-php
-RUN cd /opt &&  \
-    curl -fsSLO https://github.com/wasmerio/wasmer-php/archive/refs/tags/1.1.0.tar.gz && \
-    tar -xzvf 1.1.0.tar.gz && \
-    rm 1.1.0.tar.gz &&  \
-    cp -r wasmer-php-1.1.0/ext wasmer-php &&  \
-    rm wasmer-php-1.1.0 -rf &&  \
-    cd wasmer-php && \
-    phpize && \
-    ./configure --enable-wasmer && \
-    make && \
-    make install && \
-    docker-php-ext-enable wasm
+# supervisord
+RUN apt-get -o Acquire::Check-Valid-Until=false update && apt-get install -y --no-install-recommends supervisor \
+ && rm -rf /var/lib/apt/lists/*
+RUN chmod -R 777 /var/run
 
 # composer
-COPY --from=composer:2.0 /usr/bin/composer /usr/local/bin/composer
+COPY --from=composer:2.0 /usr/bin/composer /usr/bin/composer
 RUN composer config -g repo.packagist composer https://mirrors.aliyun.com/composer/
 RUN composer self-update --2
+
+# Lua with cjson module
+RUN cp /usr/include/lua5.4/*.h /usr/include/ \
+ && cp /usr/lib/x86_64-linux-gnu/liblua5.4.a /usr/lib/liblua.a \
+ && cp /usr/lib/x86_64-linux-gnu/liblua5.4.so /usr/lib/liblua.so \
+ && pecl install -o -f lua-2.0.7 \
+ && printf 'extension=lua.so\n' > /usr/local/etc/php/conf.d/lua.ini
+
+# lua-cjson 2.1.0 vendored under vendor/ because the historical download host
+# (kyne.com.au) is no longer serving the tarball. sha256:
+# 8449f696d56edf27a318daa315d324757bf68120306fecbeb28a66b86077d8cd
+COPY vendor/lua-cjson-2.1.0.tar.gz /tmp/
+RUN set -eux; \
+    cd /tmp; \
+    tar xzf lua-cjson-2.1.0.tar.gz; \
+    cd lua-cjson-2.1.0; \
+    sed -i "s/LUA_VERSION =       5.1/LUA_VERSION =       5.4/" Makefile; \
+    sed -i "s/LUA_MODULE_DIR =    \$(PREFIX)\/share\/lua\/\$(LUA_VERSION)/LUA_MODULE_DIR =    \$(PREFIX)\/share\/lua\$(LUA_VERSION)/" Makefile; \
+    make; \
+    make install; \
+    rm -rf /tmp/lua-cjson-2.1.0 /tmp/lua-cjson-2.1.0.tar.gz
+
+RUN docker-php-source delete \
+ && apt-get clean \
+ && rm -rf /tmp/pear /var/lib/apt/lists/*
 
 WORKDIR /etc/php
