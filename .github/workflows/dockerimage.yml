@@ -68,10 +68,11 @@ jobs:
           echo "== php version =="
           docker run --rm --entrypoint php "$IMAGE" -v
           echo "== php ini hardening marker (only present with the CVE backport) =="
-          docker run --rm --entrypoint php "$IMAGE" -i | grep -q 'max_multipart_body_parts' || {
+          docker run --rm --entrypoint php "$IMAGE" -i > /tmp/phpinfo.txt
+          if ! grep -q 'max_multipart_body_parts' /tmp/phpinfo.txt; then
             echo "max_multipart_body_parts is missing: the CVE backport was not built into this image" >&2
             exit 1
-          }
+          fi
           echo "== expected extensions =="
           docker run --rm --entrypoint php "$IMAGE" -m > /tmp/modules.txt
           for ext in bcmath gd zip pdo_mysql pdo_pgsql sockets opcache pcntl ev event redis swoole lua; do
