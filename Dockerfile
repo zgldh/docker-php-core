@@ -36,7 +36,8 @@ RUN set -eux; \
         -e 's|^deb http://deb.debian.org/debian-security bullseye-security main$|deb http://snapshot.debian.org/archive/debian-security/20221114T000000Z bullseye-security main|' \
         -e 's|^deb http://deb.debian.org/debian bullseye-updates main$|deb http://snapshot.debian.org/archive/debian/20221114T000000Z bullseye-updates main|' \
         /etc/apt/sources.list; \
-    apt-get -o Acquire::Check-Valid-Until=false update; \
+    printf 'Acquire::Check-Valid-Until "false";\n' > /etc/apt/apt.conf.d/99snapshot; \
+    apt-get update; \
     apt-get install -y --no-install-recommends \
         bison \
         libargon2-dev \
