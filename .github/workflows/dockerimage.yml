@@ -3,13 +3,14 @@ name: Docker Image CI
 on:
   push:
     tags:
-      - '7.4.33-fpm-cve-*'
+      - '8.*-fpm'
+  pull_request:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Image tag to build and push'
+        description: 'Image tag to build and push (must match Dockerfile PHP version)'
         required: true
-        default: '7.4.33-fpm-cve-2026-109618-109619'
+        default: '8.5.12-fpm'
 
 permissions:
   contents: read
@@ -25,32 +26,31 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Resolve image tag
+      - name: Resolve and validate image tag
         id: meta
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+        shell: bash
         run: |
           set -euo pipefail
-          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
-            tag="${{ inputs.tag }}"
+          base_tag="$(sed -n 's/^FROM php:\([^ ]*\).*/\1/p' Dockerfile)"
+          if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
+            tag="test-${GITHUB_SHA}"
           else
-            tag="${GITHUB_REF_NAME}"
-          fi
-          if [ -z "$tag" ]; then
-            echo "image tag is empty" >&2
-            exit 1
+            tag="${INPUT_TAG:-${GITHUB_REF_NAME}}"
+            if [[ ! "$tag" =~ ^8\.[0-9]+\.[0-9]+-fpm$ ]] || [ "$tag" != "$base_tag" ]; then
+              echo "Release tag must match Dockerfile base tag: $base_tag" >&2
+              exit 1
+            fi
           fi
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "php_version=${base_tag%-fpm}" >> "$GITHUB_OUTPUT"
           echo "Image tag: $tag"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: zgldh
-          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-
-      - name: Build image (load for smoke test)
+      - name: Build image for verification
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -60,46 +60,24 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Smoke test
+      - name: Verify PHP, extensions and tools
         env:
           IMAGE: ${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tag }}
+          PHP_VERSION: ${{ steps.meta.outputs.php_version }}
         run: |
           set -euo pipefail
-          echo "== php version =="
-          docker run --rm --entrypoint php "$IMAGE" -v
-          echo "== php ini hardening marker (only present with the CVE backport) =="
-          docker run --rm --entrypoint php "$IMAGE" -i | grep -q 'max_multipart_body_parts' || {
-            echo "max_multipart_body_parts is missing: the CVE backport was not built into this image" >&2
-            exit 1
-          }
-          echo "== expected extensions =="
-          docker run --rm --entrypoint php "$IMAGE" -m > /tmp/modules.txt
-          for ext in bcmath gd zip pdo_mysql pdo_pgsql sockets opcache pcntl ev event redis swoole lua; do
-            grep -qi "^${ext}$" /tmp/modules.txt || {
-              echo "missing PHP extension: ${ext}" >&2
-              exit 1
-            }
-          done
-          echo "== fpm config =="
-          docker run --rm --entrypoint php-fpm "$IMAGE" -t
-          echo "== OOM hardening (CVE-2026-109618 backport hard-exits instead of bailing out) =="
-          docker run --rm --entrypoint sh "$IMAGE" -c '
-            set -eu
-            php -d memory_limit=32M -r "register_shutdown_function(function () { file_put_contents(\"/tmp/shutdown-ran\", \"1\"); }); str_repeat(\"x\", 64 * 1024 * 1024);" >/tmp/oom.out 2>&1 || true
-            if [ -f /tmp/shutdown-ran ]; then
-              echo "shutdown function ran after OOM; the CVE backport is missing" >&2
-              cat /tmp/oom.out >&2
-              exit 1
-            fi
-            grep -q "Fatal error" /tmp/oom.out || {
-              echo "unexpected OOM output" >&2
-              cat /tmp/oom.out >&2
-              exit 1
-            }
-          '
-          echo "smoke test passed"
+          docker run --rm --entrypoint sh \
+            -v "$PWD/tests:/tests:ro" "$IMAGE" /tests/smoke.sh "$PHP_VERSION"
 
-      - name: Push image
+      - name: Login to Docker Hub
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          username: zgldh
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Push verified image
+        if: github.event_name != 'pull_request'
         env:
           IMAGE: ${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tag }}
         run: docker push "$IMAGE"
@@ -109,3 +87,4 @@ jobs:
           IMAGE: ${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tag }}
         run: |
           docker image inspect "$IMAGE" --format '{{.Id}} {{.Created}}'
+          echo "### Verified image: \`$IMAGE\`" >> "$GITHUB_STEP_SUMMARY"
